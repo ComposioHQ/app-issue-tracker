@@ -286,6 +286,16 @@
     </div>
 
     <script>
+        // Immediately check if Supabase library loaded
+        console.log('Script starting, checking Supabase library...');
+        console.log('window.supabase:', typeof window.supabase);
+        if (typeof window.supabase === 'undefined') {
+            console.error('CRITICAL: Supabase library not loaded!');
+            document.body.innerHTML = '<div style="color:red;padding:20px;">ERROR: Supabase library failed to load. Check console.</div>';
+        } else {
+            console.log('Supabase library loaded, createClient:', typeof window.supabase.createClient);
+        }
+
         let supabase = null;
         let appData = {};
         let currentFilter = 'all';
