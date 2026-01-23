@@ -811,6 +811,7 @@
                                     <div>
                                         <div class="flex items-center gap-2">
                                             <h3 class="font-semibold text-gray-800 text-lg ${isFullySolved ? 'line-through' : ''}">${formatAppName(app.app_name)}</h3>
+                                            ${app.linear_ticket_url ? `<a href="${app.linear_ticket_url}" target="_blank" onclick="event.stopPropagation()" class="text-indigo-500 hover:text-indigo-700" title="View Linear Ticket"><i class="fas fa-ticket-alt"></i></a>` : ''}
                                             ${teamIndicator}
                                         </div>
                                         <span class="tag bg-gray-100 text-gray-600 mt-2">${getCostCategoryLabel(category)}</span>
@@ -922,11 +923,18 @@
                                 <div class="text-gray-700">${info.free_tier_limitations}</div>
                             </div>
                         ` : ''}
-                        ${info.pricing_url ? `
-                            <a href="${info.pricing_url}" target="_blank" class="inline-flex items-center gap-2 mt-4 text-purple-600 hover:text-purple-800">
-                                <i class="fas fa-external-link-alt"></i> View Pricing Page
-                            </a>
-                        ` : ''}
+                        <div class="flex gap-4 mt-4">
+                            ${info.pricing_url ? `
+                                <a href="${info.pricing_url}" target="_blank" class="inline-flex items-center gap-2 text-purple-600 hover:text-purple-800">
+                                    <i class="fas fa-external-link-alt"></i> View Pricing Page
+                                </a>
+                            ` : ''}
+                            ${app.linear_ticket_url ? `
+                                <a href="${app.linear_ticket_url}" target="_blank" class="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-800">
+                                    <i class="fas fa-ticket-alt"></i> View Linear Ticket
+                                </a>
+                            ` : ''}
+                        </div>
                     </div>
 
                     ${info.notes ? `
