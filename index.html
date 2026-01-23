@@ -1091,6 +1091,16 @@
                     document.querySelectorAll('.team-tab').forEach(t => t.classList.remove('tab-active'));
                     tab.classList.add('tab-active');
                     currentTeam = tab.dataset.team;
+
+                    // Reset showSolved when changing teams
+                    if (showSolved) {
+                        showSolved = false;
+                        const solvedBtn = document.getElementById('toggle-solved');
+                        solvedBtn.classList.remove('bg-green-100', 'text-green-700');
+                        solvedBtn.classList.add('bg-gray-100', 'text-gray-600');
+                        solvedBtn.innerHTML = '<i class="fas fa-eye-slash mr-1"></i> <span id="solved-count">' + document.getElementById('solved-count').textContent + '</span> Solved';
+                    }
+
                     updateSolvedCount();
                     updateHeader();
                     updateStats();
@@ -1108,7 +1118,19 @@
                     btn.classList.remove('bg-gray-100', 'text-gray-600');
                     btn.classList.add('bg-purple-600', 'text-white');
                     currentFilter = btn.dataset.filter;
+
+                    // Reset showSolved when changing filters
+                    if (showSolved) {
+                        showSolved = false;
+                        const solvedBtn = document.getElementById('toggle-solved');
+                        solvedBtn.classList.remove('bg-green-100', 'text-green-700');
+                        solvedBtn.classList.add('bg-gray-100', 'text-gray-600');
+                        solvedBtn.innerHTML = '<i class="fas fa-eye-slash mr-1"></i> <span id="solved-count">' + document.getElementById('solved-count').textContent + '</span> Solved';
+                    }
+
                     updateFilterIndicator();
+                    updateHeader();
+                    updateStats();
                     renderApps();
                 });
             });
@@ -1120,7 +1142,19 @@
                         b.classList.remove('bg-purple-600', 'text-white');
                         b.classList.add('bg-gray-100', 'text-gray-600');
                     });
+
+                    // Reset showSolved when changing filters via stat cards
+                    if (showSolved) {
+                        showSolved = false;
+                        const solvedBtn = document.getElementById('toggle-solved');
+                        solvedBtn.classList.remove('bg-green-100', 'text-green-700');
+                        solvedBtn.classList.add('bg-gray-100', 'text-gray-600');
+                        solvedBtn.innerHTML = '<i class="fas fa-eye-slash mr-1"></i> <span id="solved-count">' + document.getElementById('solved-count').textContent + '</span> Solved';
+                    }
+
                     updateFilterIndicator();
+                    updateHeader();
+                    updateStats();
                     renderApps();
                 });
             });
@@ -1135,7 +1169,19 @@
                 });
                 document.querySelector('.filter-btn[data-filter="all"]').classList.remove('bg-gray-100', 'text-gray-600');
                 document.querySelector('.filter-btn[data-filter="all"]').classList.add('bg-purple-600', 'text-white');
+
+                // Reset showSolved when clearing filters
+                if (showSolved) {
+                    showSolved = false;
+                    const solvedBtn = document.getElementById('toggle-solved');
+                    solvedBtn.classList.remove('bg-green-100', 'text-green-700');
+                    solvedBtn.classList.add('bg-gray-100', 'text-gray-600');
+                    solvedBtn.innerHTML = '<i class="fas fa-eye-slash mr-1"></i> <span id="solved-count">' + document.getElementById('solved-count').textContent + '</span> Solved';
+                }
+
                 updateFilterIndicator();
+                updateHeader();
+                updateStats();
                 renderApps();
             });
 
