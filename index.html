@@ -448,6 +448,7 @@
                 }
 
                 updateSolvedCount();
+                updateTabCounts();
                 renderApps();
 
             } catch (err) {
@@ -565,6 +566,7 @@
                 }
 
                 updateSolvedCount();
+                updateTabCounts();
                 renderApps();
 
             } catch (err) {
@@ -648,8 +650,16 @@
             let allCount = 0, qaCount = 0, partnershipsCount = 0;
             Object.values(appData).forEach(app => {
                 allCount++;
-                if (app.teams?.includes('QA')) qaCount++;
-                if (app.teams?.includes('Partnerships')) partnershipsCount++;
+                // Count apps with unsolved QA issues
+                if (app.teams?.includes('QA') && app.qa_issues?.length > 0) {
+                    const hasUnsolvedQA = app.qa_issues.some(issue => !isIssueSolved(app.app_name, issue, 'QA'));
+                    if (hasUnsolvedQA) qaCount++;
+                }
+                // Count apps with unsolved Partnerships issues
+                if (app.teams?.includes('Partnerships') && app.partnerships_issues?.length > 0) {
+                    const hasUnsolvedPartnerships = app.partnerships_issues.some(issue => !isIssueSolved(app.app_name, issue, 'Partnerships'));
+                    if (hasUnsolvedPartnerships) partnershipsCount++;
+                }
             });
             document.getElementById('tab-count-all').textContent = `(${allCount})`;
             document.getElementById('tab-count-qa').textContent = `(${qaCount})`;
