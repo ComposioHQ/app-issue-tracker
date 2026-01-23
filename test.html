@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Supabase Connection Test</h1>
+    <pre id="output">Starting test...</pre>
+    <script>
+        const output = document.getElementById('output');
+        function log(msg) {
+            output.textContent += '\n' + msg;
+            console.log(msg);
+        }
+
+        async function test() {
+            try {
+                log('1. Checking Supabase library...');
+                log('   window.supabase: ' + typeof window.supabase);
+                log('   createClient: ' + typeof window.supabase?.createClient);
+
+                log('2. Fetching config...');
+                const resp = await fetch('/api/config.js');
+                const config = await resp.json();
+                log('   URL: ' + config.supabaseUrl);
+                log('   Key: ' + config.supabaseAnonKey?.substring(0, 20) + '...');
+
+                log('3. Creating client...');
+                const client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                log('   Client created: ' + typeof client);
+
+                log('4. Querying apps...');
+                const { data, error } = await client.from('apps').select('app_name').limit(5);
+                
+                if (error) {
+                    log('   ERROR: ' + JSON.stringify(error));
+                } else {
+                    log('   SUCCESS! Got ' + data.length + ' apps');
+                    log('   Apps: ' + data.map(a => a.app_name).join(', '));
+                }
+
+                log('\n=== TEST COMPLETE ===');
+            } catch (e) {
+                log('EXCEPTION: ' + e.message);
+                log(e.stack);
+            }
+        }
+
+        test();
+    </script>
+</body>
+</html>
