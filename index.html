@@ -300,21 +300,30 @@
         // Initialize Supabase and load data
         async function initSupabase() {
             try {
+                console.log('Step 1: Starting initSupabase');
+
                 // Fetch config from API
                 const configResponse = await fetch('/api/config.js');
+                console.log('Step 2: Config response received', configResponse.status);
                 const config = await configResponse.json();
+                console.log('Step 3: Config parsed', config);
 
                 if (!config.supabaseUrl || !config.supabaseAnonKey) {
                     throw new Error('Supabase configuration not found');
                 }
 
                 // Initialize Supabase client
+                console.log('Step 4: Creating Supabase client');
+                console.log('window.supabase:', typeof window.supabase);
                 supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                console.log('Step 5: Supabase client created');
 
                 // Fetch apps data
+                console.log('Step 6: Fetching apps...');
                 const { data: apps, error: appsError } = await supabase
                     .from('apps')
                     .select('*');
+                console.log('Step 7: Apps fetched', apps?.length, 'apps, error:', appsError);
 
                 if (appsError) throw appsError;
 
@@ -334,15 +343,17 @@
                 });
 
                 // Fetch solved issues
+                console.log('Step 8: Fetching solved issues...');
                 const { data: solved, error: solvedError } = await supabase
                     .from('solved_issues')
                     .select('*');
+                console.log('Step 9: Solved issues fetched', solved?.length, 'items, error:', solvedError);
 
                 if (solvedError) throw solvedError;
 
                 // Convert solved issues to state format
                 solvedState = {};
-                solved.forEach(item => {
+                (solved || []).forEach(item => {
                     if (!solvedState[item.app_name]) {
                         solvedState[item.app_name] = { issues: {} };
                     }
@@ -352,16 +363,20 @@
                 });
 
                 // Hide loading, init dashboard
+                console.log('Step 10: Calling initDashboard, appData has', Object.keys(appData).length, 'apps');
                 document.getElementById('loading-state').style.display = 'none';
                 initDashboard();
+                console.log('Step 11: initDashboard completed');
 
             } catch (err) {
                 console.error('Error initializing:', err);
+                document.getElementById('loading-state').style.display = 'none';
                 document.getElementById('app-grid').innerHTML = `
                     <div class="col-span-3 text-center py-12 text-red-500">
                         <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
                         <p class="text-xl">Error loading data</p>
                         <p class="text-sm mt-2">${err.message}</p>
+                        <p class="text-xs mt-2 text-gray-500">${err.stack || ''}</p>
                     </div>
                 `;
             }
