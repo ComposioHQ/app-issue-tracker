@@ -301,7 +301,7 @@
         async function initSupabase() {
             try {
                 // Fetch config from API
-                const configResponse = await fetch('/api/config');
+                const configResponse = await fetch('/api/config.js');
                 const config = await configResponse.json();
 
                 if (!config.supabaseUrl || !config.supabaseAnonKey) {
