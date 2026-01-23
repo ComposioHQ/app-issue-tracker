@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App API Pricing Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .gradient-qa { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .gradient-partnerships { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
+
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); }
+
+        .cost-free { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .cost-low { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+        .cost-medium { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .cost-high { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+        .cost-enterprise { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
+        .cost-credits { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
+        .cost-unknown { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); }
+
+        .team-qa { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+        .team-partnerships { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+
+        .modal { transition: opacity 0.3s ease, visibility 0.3s ease; }
+        .modal.hidden { opacity: 0; visibility: hidden; }
+        .modal.visible { opacity: 1; visibility: visible; }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+
+        .animate-fade-in { animation: fadeIn 0.5s ease forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .search-input:focus { box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3); }
+
+        .tab-active { background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .tab-qa.tab-active { color: #d97706; }
+        .tab-partnerships.tab-active { color: #2563eb; }
+        .tab-all.tab-active { color: #7c3aed; }
+
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header id="main-header" class="gradient-bg text-white py-8 px-4 shadow-lg transition-all duration-300">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <h1 class="text-3xl font-bold flex items-center gap-3">
+                        <i class="fas fa-chart-pie"></i>
+                        App API Pricing Dashboard
+                    </h1>
+                    <p class="text-white/80 mt-2" id="header-subtitle">Comprehensive pricing & unblocking cost analysis</p>
+                </div>
+                <div class="flex gap-4">
+                    <div class="text-center px-4 py-2 bg-white/10 rounded-lg">
+                        <div class="text-2xl font-bold" id="header-apps">--</div>
+                        <div class="text-white/70 text-sm">Apps</div>
+                    </div>
+                    <div class="text-center px-4 py-2 bg-white/10 rounded-lg">
+                        <div class="text-2xl font-bold" id="header-issues">--</div>
+                        <div class="text-white/70 text-sm">Issues</div>
+                    </div>
+                    <div class="text-center px-4 py-2 bg-white/10 rounded-lg">
+                        <div class="text-2xl font-bold" id="header-actions">--</div>
+                        <div class="text-white/70 text-sm">Affected</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Team Tabs -->
+    <div class="max-w-7xl mx-auto px-4 -mt-4">
+        <div class="inline-flex bg-gray-200 p-1 rounded-xl shadow-sm">
+            <button class="team-tab tab-all tab-active px-6 py-3 rounded-lg font-medium transition-all" data-team="all">
+                <i class="fas fa-globe mr-2"></i>All Apps <span class="ml-1 text-sm opacity-70" id="tab-count-all">(--)</span>
+            </button>
+            <button class="team-tab tab-qa px-6 py-3 rounded-lg font-medium text-gray-600 hover:text-gray-800 transition-all" data-team="QA">
+                <i class="fas fa-flask mr-2 text-amber-500"></i>QA <span class="ml-1 text-sm opacity-70" id="tab-count-qa">(--)</span>
+            </button>
+            <button class="team-tab tab-partnerships px-6 py-3 rounded-lg font-medium text-gray-600 hover:text-gray-800 transition-all" data-team="Partnerships">
+                <i class="fas fa-handshake mr-2 text-blue-500"></i>Partnerships <span class="ml-1 text-sm opacity-70" id="tab-count-partnerships">(--)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="max-w-7xl mx-auto px-4 mt-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+            <div class="glass rounded-xl p-4 card-hover cursor-pointer stat-card" data-filter="free">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg cost-free flex items-center justify-center text-white">
+                        <i class="fas fa-gift"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-gray-800" id="count-free">0</div>
+                        <div class="text-xs text-gray-500">Free Tier</div>
+                    </div>
+                </div>
+            </div>
+            <div class="glass rounded-xl p-4 card-hover cursor-pointer stat-card" data-filter="low">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg cost-low flex items-center justify-center text-white">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-gray-800" id="count-low">0</div>
+                        <div class="text-xs text-gray-500">$1-30/mo</div>
+                    </div>
+                </div>
+            </div>
+            <div class="glass rounded-xl p-4 card-hover cursor-pointer stat-card" data-filter="medium">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg cost-medium flex items-center justify-center text-white">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-gray-800" id="count-medium">0</div>
+                        <div class="text-xs text-gray-500">$30-100/mo</div>
+                    </div>
+                </div>
+            </div>
+            <div class="glass rounded-xl p-4 card-hover cursor-pointer stat-card" data-filter="high">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg cost-high flex items-center justify-center text-white">
+                        <i class="fas fa-fire"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-gray-800" id="count-high">0</div>
+                        <div class="text-xs text-gray-500">$100+/mo</div>
+                    </div>
+                </div>
+            </div>
+            <div class="glass rounded-xl p-4 card-hover cursor-pointer stat-card" data-filter="credits">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg cost-credits flex items-center justify-center text-white">
+                        <i class="fas fa-ticket"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-gray-800" id="count-credits">0</div>
+                        <div class="text-xs text-gray-500">Credits</div>
+                    </div>
+                </div>
+            </div>
+            <div class="glass rounded-xl p-4 card-hover cursor-pointer stat-card" data-filter="enterprise">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg cost-enterprise flex items-center justify-center text-white">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-gray-800" id="count-enterprise">0</div>
+                        <div class="text-xs text-gray-500">Enterprise</div>
+                    </div>
+                </div>
+            </div>
+            <div class="glass rounded-xl p-4 card-hover cursor-pointer stat-card" data-filter="unknown">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg cost-unknown flex items-center justify-center text-white">
+                        <i class="fas fa-question"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-gray-800" id="count-unknown">0</div>
+                        <div class="text-xs text-gray-500">Unknown</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="max-w-7xl mx-auto px-4 mt-6">
+        <div class="glass rounded-xl p-4 flex flex-col md:flex-row gap-4 items-center">
+            <div class="relative flex-1 w-full">
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="search" placeholder="Search apps..."
+                    class="search-input w-full pl-12 pr-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:border-purple-500 transition-all">
+            </div>
+            <div class="flex gap-2 flex-wrap justify-center">
+                <button class="filter-btn px-4 py-2 rounded-lg bg-purple-600 text-white font-medium transition-all hover:bg-purple-700" data-filter="all">
+                    All
+                </button>
+                <button class="filter-btn px-4 py-2 rounded-lg bg-gray-100 text-gray-600 font-medium transition-all hover:bg-gray-200" data-filter="free-tier">
+                    <i class="fas fa-check-circle mr-1 text-green-500"></i> Free API
+                </button>
+                <button class="filter-btn px-4 py-2 rounded-lg bg-gray-100 text-gray-600 font-medium transition-all hover:bg-gray-200" data-filter="paywalled">
+                    <i class="fas fa-lock mr-1 text-red-500"></i> Paywalled
+                </button>
+                <button id="toggle-solved" class="px-4 py-2 rounded-lg bg-gray-100 text-gray-600 font-medium transition-all hover:bg-gray-200">
+                    <i class="fas fa-eye-slash mr-1"></i> <span id="solved-count">0</span> Solved
+                </button>
+                <select id="sort-select" class="px-4 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:border-purple-500">
+                    <option value="affected-actions" selected>Sort: Affected Actions (High - Low)</option>
+                    <option value="name">Sort: Name</option>
+                    <option value="cost-asc">Sort: Cost (Low - High)</option>
+                    <option value="cost-desc">Sort: Cost (High - Low)</option>
+                    <option value="issues">Sort: Issues Count</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Filter Indicator -->
+    <div class="max-w-7xl mx-auto px-4 mt-4">
+        <div id="active-filter" class="hidden items-center gap-2 text-sm text-gray-600">
+            <span>Showing:</span>
+            <span id="filter-label" class="font-medium text-purple-600"></span>
+            <button id="clear-filter" class="text-red-500 hover:text-red-700">
+                <i class="fas fa-times-circle"></i> Clear
+            </button>
+            <span class="mx-2">|</span>
+            <span id="results-count" class="text-gray-500"></span>
+        </div>
+    </div>
+
+    <!-- App Grid -->
+    <div class="max-w-7xl mx-auto px-4 mt-6 pb-12">
+        <div id="app-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Loading state -->
+            <div id="loading-state" class="col-span-3 flex flex-col items-center justify-center py-12">
+                <div class="loading-spinner mb-4"></div>
+                <p class="text-gray-500">Loading apps from database...</p>
+            </div>
+        </div>
+        <div id="no-results" class="hidden text-center py-12 text-gray-500">
+            <i class="fas fa-search text-4xl mb-4"></i>
+            <p class="text-xl">No apps found matching your criteria</p>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="modal hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+            <div id="modal-header" class="p-6 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 id="modal-title" class="text-2xl font-bold"></h2>
+                        <div id="modal-teams" class="flex gap-2 mt-2"></div>
+                    </div>
+                    <button id="close-modal" class="text-white/80 hover:text-white transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="modal-content" class="p-6 overflow-y-auto scrollbar-thin max-h-[calc(90vh-200px)]"></div>
+        </div>
+    </div>
+
+    <script>
+        let supabase = null;
+        let appData = {};
+        let currentFilter = 'all';
+        let currentTeam = 'all';
+        let searchQuery = '';
+        let sortBy = 'affected-actions';
+        let showSolved = false;
+
+        // Solved state: { "app_name": { "issues": { "issue_key": { "solvedAt": "..." } } } }
+        let solvedState = {};
+
+        // Initialize Supabase and load data
+        async function initSupabase() {
+            try {
+                // Fetch config from API
+                const configResponse = await fetch('/api/config');
+                const config = await configResponse.json();
+
+                if (!config.supabaseUrl || !config.supabaseAnonKey) {
+                    throw new Error('Supabase configuration not found');
+                }
+
+                // Initialize Supabase client
+                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+
+                // Fetch apps data
+                const { data: apps, error: appsError } = await supabase
+                    .from('apps')
+                    .select('*');
+
+                if (appsError) throw appsError;
+
+                // Convert array to object keyed by app_name
+                appData = {};
+                apps.forEach(app => {
+                    appData[app.app_name] = {
+                        app_name: app.app_name,
+                        app_level_enrichment: app.app_level_enrichment || {},
+                        teams: app.teams || [],
+                        qa_issues: app.qa_issues || [],
+                        partnerships_issues: app.partnerships_issues || [],
+                        qa_total_actions: app.qa_total_actions || 0,
+                        partnerships_total_actions: app.partnerships_total_actions || 0,
+                        total_cost_to_unblock: app.total_cost_to_unblock
+                    };
+                });
+
+                // Fetch solved issues
+                const { data: solved, error: solvedError } = await supabase
+                    .from('solved_issues')
+                    .select('*');
+
+                if (solvedError) throw solvedError;
+
+                // Convert solved issues to state format
+                solvedState = {};
+                solved.forEach(item => {
+                    if (!solvedState[item.app_name]) {
+                        solvedState[item.app_name] = { issues: {} };
+                    }
+                    solvedState[item.app_name].issues[item.issue_key] = {
+                        solvedAt: item.solved_at
+                    };
+                });
+
+                // Hide loading, init dashboard
+                document.getElementById('loading-state').style.display = 'none';
+                initDashboard();
+
+            } catch (err) {
+                console.error('Error initializing:', err);
+                document.getElementById('app-grid').innerHTML = `
+                    <div class="col-span-3 text-center py-12 text-red-500">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                        <p class="text-xl">Error loading data</p>
+                        <p class="text-sm mt-2">${err.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Generate a unique key for an issue
+        function getIssueKey(issue, team) {
+            return `${team}_${issue.issue_type}_${(issue.description || '').substring(0, 50)}`.replace(/[^a-zA-Z0-9_]/g, '_');
+        }
+
+        // Check if a specific issue is solved
+        function isIssueSolved(appName, issue, team) {
+            const appState = solvedState[appName];
+            if (!appState) return false;
+            const issueKey = getIssueKey(issue, team);
+            return !!appState.issues?.[issueKey];
+        }
+
+        // Toggle solved state for a specific issue (save to Supabase)
+        async function toggleIssueSolved(appName, issueKey, event) {
+            if (event) event.stopPropagation();
+
+            if (!solvedState[appName]) {
+                solvedState[appName] = { issues: {} };
+            }
+
+            const isSolved = !!solvedState[appName].issues[issueKey];
+
+            try {
+                if (isSolved) {
+                    // Remove from Supabase
+                    const { error } = await supabase
+                        .from('solved_issues')
+                        .delete()
+                        .eq('app_name', appName)
+                        .eq('issue_key', issueKey);
+
+                    if (error) throw error;
+
+                    delete solvedState[appName].issues[issueKey];
+                } else {
+                    // Add to Supabase
+                    const { error } = await supabase
+                        .from('solved_issues')
+                        .upsert({
+                            app_name: appName,
+                            issue_key: issueKey,
+                            solved_at: new Date().toISOString()
+                        });
+
+                    if (error) throw error;
+
+                    solvedState[appName].issues[issueKey] = { solvedAt: new Date().toISOString() };
+                }
+
+                // Clean up empty app entries
+                if (Object.keys(solvedState[appName].issues).length === 0) {
+                    delete solvedState[appName];
+                }
+
+                updateSolvedCount();
+                renderApps();
+
+            } catch (err) {
+                console.error('Error toggling solved state:', err);
+                alert('Failed to save. Please try again.');
+            }
+        }
+
+        // Get solved/total counts for an app in current team view
+        function getSolvedCounts(app) {
+            const appState = solvedState[app.app_name] || { issues: {} };
+            let totalIssues = 0;
+            let solvedIssues = 0;
+
+            if (currentTeam === 'QA' || currentTeam === 'all') {
+                (app.qa_issues || []).forEach(issue => {
+                    totalIssues++;
+                    const issueKey = getIssueKey(issue, 'QA');
+                    if (appState.issues[issueKey]) solvedIssues++;
+                });
+            }
+
+            if (currentTeam === 'Partnerships' || currentTeam === 'all') {
+                (app.partnerships_issues || []).forEach(issue => {
+                    totalIssues++;
+                    const issueKey = getIssueKey(issue, 'Partnerships');
+                    if (appState.issues[issueKey]) solvedIssues++;
+                });
+            }
+
+            return { solved: solvedIssues, total: totalIssues };
+        }
+
+        // Check if app is fully solved (all issues in current view)
+        function isAppFullySolved(app) {
+            const counts = getSolvedCounts(app);
+            return counts.total > 0 && counts.solved === counts.total;
+        }
+
+        // Toggle all issues for an app as solved/unsolved
+        async function toggleAllIssuesSolved(appName, event) {
+            if (event) event.stopPropagation();
+
+            const app = appData[appName];
+            if (!app) return;
+
+            const isFullySolved = isAppFullySolved(app);
+
+            if (!solvedState[appName]) {
+                solvedState[appName] = { issues: {} };
+            }
+
+            try {
+                if (isFullySolved) {
+                    // Unsolve all issues in current view - delete from Supabase
+                    const keysToDelete = [];
+                    if (currentTeam === 'QA' || currentTeam === 'all') {
+                        (app.qa_issues || []).forEach(issue => {
+                            keysToDelete.push(getIssueKey(issue, 'QA'));
+                        });
+                    }
+                    if (currentTeam === 'Partnerships' || currentTeam === 'all') {
+                        (app.partnerships_issues || []).forEach(issue => {
+                            keysToDelete.push(getIssueKey(issue, 'Partnerships'));
+                        });
+                    }
+
+                    for (const key of keysToDelete) {
+                        await supabase
+                            .from('solved_issues')
+                            .delete()
+                            .eq('app_name', appName)
+                            .eq('issue_key', key);
+                        delete solvedState[appName].issues[key];
+                    }
+                } else {
+                    // Solve all issues in current view - upsert to Supabase
+                    const itemsToUpsert = [];
+                    const now = new Date().toISOString();
+
+                    if (currentTeam === 'QA' || currentTeam === 'all') {
+                        (app.qa_issues || []).forEach(issue => {
+                            const issueKey = getIssueKey(issue, 'QA');
+                            itemsToUpsert.push({
+                                app_name: appName,
+                                issue_key: issueKey,
+                                solved_at: now
+                            });
+                            solvedState[appName].issues[issueKey] = { solvedAt: now };
+                        });
+                    }
+                    if (currentTeam === 'Partnerships' || currentTeam === 'all') {
+                        (app.partnerships_issues || []).forEach(issue => {
+                            const issueKey = getIssueKey(issue, 'Partnerships');
+                            itemsToUpsert.push({
+                                app_name: appName,
+                                issue_key: issueKey,
+                                solved_at: now
+                            });
+                            solvedState[appName].issues[issueKey] = { solvedAt: now };
+                        });
+                    }
+
+                    if (itemsToUpsert.length > 0) {
+                        const { error } = await supabase
+                            .from('solved_issues')
+                            .upsert(itemsToUpsert);
+                        if (error) throw error;
+                    }
+                }
+
+                // Clean up empty app entries
+                if (Object.keys(solvedState[appName].issues).length === 0) {
+                    delete solvedState[appName];
+                }
+
+                updateSolvedCount();
+                renderApps();
+
+            } catch (err) {
+                console.error('Error toggling all solved:', err);
+                alert('Failed to save. Please try again.');
+            }
+        }
+
+        function getCostCategory(app) {
+            const costType = app.app_level_enrichment.cost_type;
+            const costNumeric = app.app_level_enrichment.api_access_cost_numeric || 0;
+            if (costType === 'free') return 'free';
+            if (costType === 'enterprise') return 'enterprise';
+            if (costType === 'credits') return 'credits';
+            if (costType === 'unknown') return 'unknown';
+            if (costNumeric <= 30) return 'low';
+            if (costNumeric <= 100) return 'medium';
+            return 'high';
+        }
+
+        function getCostCategoryLabel(category) {
+            const labels = {
+                'free': 'Free Tier', 'low': '$1-30/mo', 'medium': '$30-100/mo', 'high': '$100+/mo',
+                'credits': 'Credit-Based', 'enterprise': 'Enterprise', 'unknown': 'Unknown',
+                'free-tier': 'Free API Access', 'paywalled': 'Heavily Paywalled'
+            };
+            return labels[category] || category;
+        }
+
+        function getIssuesForTeam(app) {
+            if (currentTeam === 'QA') return app.qa_issues || [];
+            if (currentTeam === 'Partnerships') return app.partnerships_issues || [];
+            return [...(app.qa_issues || []), ...(app.partnerships_issues || [])];
+        }
+
+        function getActionsForTeam(app) {
+            if (currentTeam === 'QA') return app.qa_total_actions || 0;
+            if (currentTeam === 'Partnerships') return app.partnerships_total_actions || 0;
+            return Math.max(app.qa_total_actions || 0, app.partnerships_total_actions || 0);
+        }
+
+        function getAffectedActionsForTeam(app) {
+            const issues = getIssuesForTeam(app);
+            return issues.reduce((sum, issue) => sum + (issue.affected_actions_count || 0), 0);
+        }
+
+        function toggleSolved(appName, event) {
+            toggleAllIssuesSolved(appName, event);
+        }
+
+        function updateSolvedCount() {
+            let count = 0;
+            Object.values(appData).forEach(app => {
+                if (matchesTeamFilter(app) && isAppFullySolved(app)) {
+                    count++;
+                }
+            });
+            document.getElementById('solved-count').textContent = count;
+        }
+
+        function toggleSolvedFromModal(appName) {
+            toggleAllIssuesSolved(appName);
+            openModal(appName);
+        }
+
+        function toggleSingleIssueSolved(appName, issueKey) {
+            toggleIssueSolved(appName, issueKey);
+            openModal(appName);
+        }
+
+        function initDashboard() {
+            updateSolvedCount();
+            updateTabCounts();
+            updateHeader();
+            updateStats();
+            renderApps();
+            setupEventListeners();
+        }
+
+        function updateTabCounts() {
+            let allCount = 0, qaCount = 0, partnershipsCount = 0;
+            Object.values(appData).forEach(app => {
+                allCount++;
+                if (app.teams?.includes('QA')) qaCount++;
+                if (app.teams?.includes('Partnerships')) partnershipsCount++;
+            });
+            document.getElementById('tab-count-all').textContent = `(${allCount})`;
+            document.getElementById('tab-count-qa').textContent = `(${qaCount})`;
+            document.getElementById('tab-count-partnerships').textContent = `(${partnershipsCount})`;
+        }
+
+        function updateHeader() {
+            const header = document.getElementById('main-header');
+            const subtitle = document.getElementById('header-subtitle');
+
+            header.classList.remove('gradient-bg', 'gradient-qa', 'gradient-partnerships');
+            if (currentTeam === 'QA') {
+                header.classList.add('gradient-qa');
+                subtitle.textContent = 'QA Team - App Issues & Pricing';
+            } else if (currentTeam === 'Partnerships') {
+                header.classList.add('gradient-partnerships');
+                subtitle.textContent = 'Partnerships Team - App Issues & Pricing';
+            } else {
+                header.classList.add('gradient-bg');
+                subtitle.textContent = 'Comprehensive pricing & unblocking cost analysis';
+            }
+
+            let totalApps = 0, totalIssues = 0, totalAffectedActions = 0;
+            Object.values(appData).forEach(app => {
+                if (matchesTeamFilter(app)) {
+                    const isFullySolved = isAppFullySolved(app);
+                    if (showSolved ? isFullySolved : !isFullySolved) {
+                        totalApps++;
+                        const counts = getSolvedCounts(app);
+                        totalIssues += counts.total - counts.solved;
+                        const issues = getIssuesForTeam(app);
+                        issues.forEach(issue => {
+                            const team = app.qa_issues?.includes(issue) ? 'QA' : 'Partnerships';
+                            const issueKey = getIssueKey(issue, team);
+                            if (!solvedState[app.app_name]?.issues?.[issueKey]) {
+                                totalAffectedActions += issue.affected_actions_count || 0;
+                            }
+                        });
+                    }
+                }
+            });
+
+            document.getElementById('header-apps').textContent = totalApps;
+            document.getElementById('header-issues').textContent = totalIssues;
+            document.getElementById('header-actions').textContent = totalAffectedActions.toLocaleString();
+        }
+
+        function updateStats() {
+            const counts = { free: 0, low: 0, medium: 0, high: 0, credits: 0, enterprise: 0, unknown: 0 };
+            Object.values(appData).forEach(app => {
+                if (matchesTeamFilter(app)) {
+                    const isFullySolved = isAppFullySolved(app);
+                    if (showSolved ? isFullySolved : !isFullySolved) {
+                        counts[getCostCategory(app)]++;
+                    }
+                }
+            });
+            Object.keys(counts).forEach(key => {
+                document.getElementById(`count-${key}`).textContent = counts[key];
+            });
+        }
+
+        function matchesTeamFilter(app) {
+            if (currentTeam === 'all') return true;
+            return app.teams && app.teams.includes(currentTeam);
+        }
+
+        function renderApps() {
+            const grid = document.getElementById('app-grid');
+            const noResults = document.getElementById('no-results');
+
+            let apps = Object.values(appData).filter(app => matchesTeamFilter(app));
+
+            if (!showSolved) {
+                apps = apps.filter(app => !isAppFullySolved(app));
+            } else {
+                apps = apps.filter(app => isAppFullySolved(app));
+            }
+
+            if (currentFilter !== 'all') {
+                if (currentFilter === 'free-tier') {
+                    apps = apps.filter(app => app.app_level_enrichment.free_tier_has_api === true);
+                } else if (currentFilter === 'paywalled') {
+                    apps = apps.filter(app => app.app_level_enrichment.is_heavily_paywalled === true);
+                } else {
+                    apps = apps.filter(app => getCostCategory(app) === currentFilter);
+                }
+            }
+
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                apps = apps.filter(app =>
+                    app.app_name.toLowerCase().includes(query) ||
+                    (app.app_level_enrichment.notes && app.app_level_enrichment.notes.toLowerCase().includes(query))
+                );
+            }
+
+            apps.sort((a, b) => {
+                switch (sortBy) {
+                    case 'affected-actions':
+                        return getAffectedActionsForTeam(b) - getAffectedActionsForTeam(a);
+                    case 'cost-asc':
+                        return (a.app_level_enrichment.api_access_cost_numeric || 0) - (b.app_level_enrichment.api_access_cost_numeric || 0);
+                    case 'cost-desc':
+                        return (b.app_level_enrichment.api_access_cost_numeric || 0) - (a.app_level_enrichment.api_access_cost_numeric || 0);
+                    case 'issues':
+                        return getIssuesForTeam(b).length - getIssuesForTeam(a).length;
+                    default:
+                        return a.app_name.localeCompare(b.app_name);
+                }
+            });
+
+            document.getElementById('results-count').textContent = `${apps.length} apps`;
+
+            if (apps.length === 0) {
+                grid.innerHTML = '';
+                noResults.classList.remove('hidden');
+                return;
+            }
+
+            noResults.classList.add('hidden');
+
+            grid.innerHTML = apps.map((app, index) => {
+                const category = getCostCategory(app);
+                const info = app.app_level_enrichment;
+                const affectedActions = getAffectedActionsForTeam(app);
+                const solvedCounts = getSolvedCounts(app);
+                const isFullySolved = solvedCounts.total > 0 && solvedCounts.solved === solvedCounts.total;
+                const hasProgress = solvedCounts.solved > 0 && !isFullySolved;
+
+                let teamIndicator = '';
+                if (currentTeam === 'all') {
+                    const hasQA = app.teams?.includes('QA');
+                    const hasPartnerships = app.teams?.includes('Partnerships');
+                    if (hasQA && hasPartnerships) {
+                        teamIndicator = '<div class="flex gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span><span class="w-2 h-2 rounded-full bg-blue-500"></span></div>';
+                    } else if (hasQA) {
+                        teamIndicator = '<span class="w-2 h-2 rounded-full bg-amber-400"></span>';
+                    } else if (hasPartnerships) {
+                        teamIndicator = '<span class="w-2 h-2 rounded-full bg-blue-500"></span>';
+                    }
+                }
+
+                const progressPercent = solvedCounts.total > 0 ? Math.round((solvedCounts.solved / solvedCounts.total) * 100) : 0;
+
+                return `
+                    <div class="bg-white rounded-xl shadow-sm card-hover cursor-pointer animate-fade-in overflow-hidden ${isFullySolved ? 'opacity-60' : ''}"
+                         style="animation-delay: ${Math.min(index * 0.02, 0.5)}s"
+                         onclick="openModal('${app.app_name}')">
+                        <div class="cost-${category} h-2"></div>
+                        <div class="p-5">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex items-start gap-3">
+                                    <button onclick="toggleSolved('${app.app_name}', event)"
+                                            title="${isFullySolved ? 'Unmark all issues' : 'Mark all issues solved'}"
+                                            class="mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${isFullySolved ? 'bg-green-500 border-green-500 text-white' : hasProgress ? 'bg-green-100 border-green-400 text-green-600' : 'border-gray-300 hover:border-green-400'}">
+                                        ${isFullySolved ? '<i class="fas fa-check text-xs"></i>' : hasProgress ? '<i class="fas fa-minus text-xs"></i>' : ''}
+                                    </button>
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <h3 class="font-semibold text-gray-800 text-lg ${isFullySolved ? 'line-through' : ''}">${formatAppName(app.app_name)}</h3>
+                                            ${teamIndicator}
+                                        </div>
+                                        <span class="tag bg-gray-100 text-gray-600 mt-2">${getCostCategoryLabel(category)}</span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-lg font-bold text-gray-800">${info.api_access_cost || 'Unknown'}</div>
+                                    <div class="text-xs text-gray-500">${info.minimum_plan_for_api || ''}</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between text-sm text-gray-500 mt-4 pt-4 border-t border-gray-100">
+                                <div class="flex items-center gap-4">
+                                    <span title="Actions affected by issues"><i class="fas fa-bolt mr-1"></i> ${affectedActions.toLocaleString()} affected</span>
+                                    <span class="${hasProgress ? 'text-green-600 font-medium' : ''}">
+                                        <i class="fas fa-${hasProgress ? 'tasks' : 'exclamation-circle'} mr-1"></i>
+                                        ${solvedCounts.solved}/${solvedCounts.total} solved
+                                    </span>
+                                </div>
+                                <div class="flex gap-2">
+                                    ${info.free_tier_has_api ? '<span class="text-green-500"><i class="fas fa-check-circle"></i></span>' : ''}
+                                    ${info.is_heavily_paywalled ? '<span class="text-red-500"><i class="fas fa-lock"></i></span>' : ''}
+                                </div>
+                            </div>
+                            ${hasProgress ? `
+                                <div class="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                    <div class="h-full bg-green-500 rounded-full transition-all" style="width: ${progressPercent}%"></div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function formatAppName(name) {
+            return name.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        }
+
+        let currentModalApp = null;
+
+        function openModal(appName) {
+            const app = appData[appName];
+            if (!app) return;
+
+            currentModalApp = app;
+
+            const modal = document.getElementById('modal');
+            const header = document.getElementById('modal-header');
+            const title = document.getElementById('modal-title');
+            const teams = document.getElementById('modal-teams');
+            const content = document.getElementById('modal-content');
+
+            const category = getCostCategory(app);
+            const info = app.app_level_enrichment;
+            const solvedCounts = getSolvedCounts(app);
+            const isFullySolved = solvedCounts.total > 0 && solvedCounts.solved === solvedCounts.total;
+
+            header.className = `p-6 text-white cost-${category}`;
+            title.textContent = formatAppName(appName);
+
+            let teamBadges = '';
+            if (app.teams?.includes('QA')) {
+                const qaSolved = (app.qa_issues || []).filter(issue => isIssueSolved(appName, issue, 'QA')).length;
+                const qaTotal = app.qa_issues?.length || 0;
+                teamBadges += `<span class="tag bg-white/20 text-white"><i class="fas fa-flask mr-1"></i>QA (${qaSolved}/${qaTotal})</span>`;
+            }
+            if (app.teams?.includes('Partnerships')) {
+                const pSolved = (app.partnerships_issues || []).filter(issue => isIssueSolved(appName, issue, 'Partnerships')).length;
+                const pTotal = app.partnerships_issues?.length || 0;
+                teamBadges += `<span class="tag bg-white/20 text-white"><i class="fas fa-handshake mr-1"></i>Partnerships (${pSolved}/${pTotal})</span>`;
+            }
+            teamBadges += `<button onclick="toggleSolvedFromModal('${appName}')"
+                class="tag ${isFullySolved ? 'bg-green-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'} cursor-pointer transition-all">
+                <i class="fas fa-${isFullySolved ? 'check-circle' : 'circle'} mr-1"></i>${isFullySolved ? 'All Solved' : 'Mark All Solved'}
+            </button>`;
+            teams.innerHTML = teamBadges;
+
+            const issues = getIssuesForTeam(app);
+
+            content.innerHTML = `
+                <div class="space-y-6">
+                    <div class="bg-gray-50 rounded-xl p-4">
+                        <h4 class="font-semibold text-gray-700 mb-3"><i class="fas fa-tag mr-2"></i>Pricing Details</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="text-sm text-gray-500">API Access Cost</div>
+                                <div class="font-semibold text-gray-800">${info.api_access_cost || 'Unknown'}</div>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-500">Minimum Plan</div>
+                                <div class="font-semibold text-gray-800">${info.minimum_plan_for_api || 'Unknown'}</div>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-500">Free Tier API</div>
+                                <div class="font-semibold ${info.free_tier_has_api ? 'text-green-600' : 'text-red-600'}">
+                                    ${info.free_tier_has_api ? '<i class="fas fa-check-circle"></i> Yes' : '<i class="fas fa-times-circle"></i> No'}
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-500">Heavily Paywalled</div>
+                                <div class="font-semibold ${info.is_heavily_paywalled ? 'text-red-600' : 'text-green-600'}">
+                                    ${info.is_heavily_paywalled ? '<i class="fas fa-lock"></i> Yes' : '<i class="fas fa-lock-open"></i> No'}
+                                </div>
+                            </div>
+                        </div>
+                        ${info.free_tier_limitations ? `
+                            <div class="mt-4 pt-4 border-t border-gray-200">
+                                <div class="text-sm text-gray-500">Free Tier Limitations</div>
+                                <div class="text-gray-700">${info.free_tier_limitations}</div>
+                            </div>
+                        ` : ''}
+                        ${info.pricing_url ? `
+                            <a href="${info.pricing_url}" target="_blank" class="inline-flex items-center gap-2 mt-4 text-purple-600 hover:text-purple-800">
+                                <i class="fas fa-external-link-alt"></i> View Pricing Page
+                            </a>
+                        ` : ''}
+                    </div>
+
+                    ${info.notes ? `
+                        <div class="bg-blue-50 rounded-xl p-4">
+                            <h4 class="font-semibold text-blue-700 mb-2"><i class="fas fa-info-circle mr-2"></i>Notes</h4>
+                            <p class="text-blue-800">${info.notes}</p>
+                        </div>
+                    ` : ''}
+
+                    <div class="bg-purple-50 rounded-xl p-4">
+                        <h4 class="font-semibold text-purple-700 mb-2"><i class="fas fa-unlock mr-2"></i>Total Cost to Unblock</h4>
+                        <p class="text-2xl font-bold text-purple-800">${app.total_cost_to_unblock || 'Unknown'}</p>
+                    </div>
+
+                    ${currentTeam === 'all' ? renderAllTeamIssues(app) : renderTeamIssues(issues, currentTeam)}
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+            modal.classList.add('visible');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function renderAllTeamIssues(app) {
+            currentModalApp = app;
+            let html = '';
+
+            const qaSolvedCount = (app.qa_issues || []).filter(issue => isIssueSolved(app.app_name, issue, 'QA')).length;
+            const partnershipsSolvedCount = (app.partnerships_issues || []).filter(issue => isIssueSolved(app.app_name, issue, 'Partnerships')).length;
+
+            if (app.qa_issues?.length > 0) {
+                html += `
+                    <div>
+                        <h4 class="font-semibold text-amber-700 mb-3 flex items-center justify-between">
+                            <span><i class="fas fa-flask mr-2"></i>QA Issues</span>
+                            <span class="text-sm font-normal ${qaSolvedCount > 0 ? 'text-green-600' : 'text-gray-500'}">${qaSolvedCount}/${app.qa_issues.length} solved</span>
+                        </h4>
+                        <div class="space-y-3">${renderIssueCards(app.qa_issues, app.app_name, 'QA')}</div>
+                    </div>
+                `;
+            }
+
+            if (app.partnerships_issues?.length > 0) {
+                html += `
+                    <div class="${app.qa_issues?.length > 0 ? 'mt-6 pt-6 border-t border-gray-200' : ''}">
+                        <h4 class="font-semibold text-blue-700 mb-3 flex items-center justify-between">
+                            <span><i class="fas fa-handshake mr-2"></i>Partnerships Issues</span>
+                            <span class="text-sm font-normal ${partnershipsSolvedCount > 0 ? 'text-green-600' : 'text-gray-500'}">${partnershipsSolvedCount}/${app.partnerships_issues.length} solved</span>
+                        </h4>
+                        <div class="space-y-3">${renderIssueCards(app.partnerships_issues, app.app_name, 'Partnerships')}</div>
+                    </div>
+                `;
+            }
+
+            return html || '<p class="text-gray-500">No issues found.</p>';
+        }
+
+        function renderTeamIssues(issues, team) {
+            if (!issues || issues.length === 0) {
+                return '<p class="text-gray-500">No issues found for this team.</p>';
+            }
+
+            const app = currentModalApp;
+            const solvedCount = issues.filter(issue => isIssueSolved(app.app_name, issue, team)).length;
+            const teamLabel = team === 'QA' ? 'QA' : 'Partnerships';
+            const teamColor = team === 'QA' ? 'amber' : 'blue';
+            const teamIcon = team === 'QA' ? 'flask' : 'handshake';
+
+            return `
+                <div>
+                    <h4 class="font-semibold text-${teamColor}-700 mb-3 flex items-center justify-between">
+                        <span><i class="fas fa-${teamIcon} mr-2"></i>${teamLabel} Issues</span>
+                        <span class="text-sm font-normal ${solvedCount > 0 ? 'text-green-600' : 'text-gray-500'}">${solvedCount}/${issues.length} solved</span>
+                    </h4>
+                    <div class="space-y-3">${renderIssueCards(issues, app.app_name, team)}</div>
+                </div>
+            `;
+        }
+
+        function renderIssueCards(issues, appName, team) {
+            return issues.map(issue => {
+                const issueKey = getIssueKey(issue, team);
+                const isSolved = solvedState[appName]?.issues?.[issueKey];
+
+                return `
+                <div class="bg-gray-50 rounded-xl p-4 ${isSolved ? 'opacity-60' : ''}">
+                    <div class="flex items-start gap-3">
+                        <button onclick="toggleSingleIssueSolved('${appName}', '${issueKey}')"
+                                class="mt-0.5 w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all ${isSolved ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'}">
+                            ${isSolved ? '<i class="fas fa-check text-xs"></i>' : ''}
+                        </button>
+                        <div class="flex-1">
+                            <div class="flex items-start justify-between mb-2">
+                                <div class="font-medium text-gray-800 ${isSolved ? 'line-through' : ''}">${issue.issue_type}</div>
+                                <span class="tag ${issue.enrichment?.effort === 'Low' ? 'bg-green-100 text-green-700' :
+                                                  issue.enrichment?.effort === 'High' ? 'bg-red-100 text-red-700' :
+                                                  'bg-yellow-100 text-yellow-700'}">
+                                    ${issue.enrichment?.effort || 'Medium'} Effort
+                                </span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-3">${issue.description || ''}</p>
+                            ${issue.affected_actions_count ? `
+                                <div class="text-xs text-gray-500 mb-2">
+                                    <i class="fas fa-bolt"></i> Affects ${issue.affected_actions_count} actions
+                                </div>
+                            ` : ''}
+                            ${issue.enrichment?.solution ? `
+                                <div class="bg-white rounded-lg p-3 mt-2">
+                                    <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Solution</div>
+                                    <div class="text-gray-700">${issue.enrichment.solution}</div>
+                                    ${issue.enrichment.additional_cost && issue.enrichment.additional_cost !== '$0' ? `
+                                        <div class="text-sm text-purple-600 mt-1">
+                                            <i class="fas fa-tag"></i> Additional cost: ${issue.enrichment.additional_cost}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            modal.classList.remove('visible');
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        function setupEventListeners() {
+            document.getElementById('search').addEventListener('input', (e) => {
+                searchQuery = e.target.value;
+                renderApps();
+                updateFilterIndicator();
+            });
+
+            document.getElementById('sort-select').addEventListener('change', (e) => {
+                sortBy = e.target.value;
+                renderApps();
+            });
+
+            document.getElementById('toggle-solved').addEventListener('click', () => {
+                showSolved = !showSolved;
+                const btn = document.getElementById('toggle-solved');
+                if (showSolved) {
+                    btn.classList.remove('bg-gray-100', 'text-gray-600');
+                    btn.classList.add('bg-green-100', 'text-green-700');
+                    btn.innerHTML = '<i class="fas fa-eye mr-1"></i> <span id="solved-count">' + document.getElementById('solved-count').textContent + '</span> Solved';
+                } else {
+                    btn.classList.remove('bg-green-100', 'text-green-700');
+                    btn.classList.add('bg-gray-100', 'text-gray-600');
+                    btn.innerHTML = '<i class="fas fa-eye-slash mr-1"></i> <span id="solved-count">' + document.getElementById('solved-count').textContent + '</span> Solved';
+                }
+                updateHeader();
+                updateStats();
+                renderApps();
+            });
+
+            document.querySelectorAll('.team-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.team-tab').forEach(t => t.classList.remove('tab-active'));
+                    tab.classList.add('tab-active');
+                    currentTeam = tab.dataset.team;
+                    updateSolvedCount();
+                    updateHeader();
+                    updateStats();
+                    renderApps();
+                    updateFilterIndicator();
+                });
+            });
+
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-btn').forEach(b => {
+                        b.classList.remove('bg-purple-600', 'text-white');
+                        b.classList.add('bg-gray-100', 'text-gray-600');
+                    });
+                    btn.classList.remove('bg-gray-100', 'text-gray-600');
+                    btn.classList.add('bg-purple-600', 'text-white');
+                    currentFilter = btn.dataset.filter;
+                    updateFilterIndicator();
+                    renderApps();
+                });
+            });
+
+            document.querySelectorAll('.stat-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    currentFilter = card.dataset.filter;
+                    document.querySelectorAll('.filter-btn').forEach(b => {
+                        b.classList.remove('bg-purple-600', 'text-white');
+                        b.classList.add('bg-gray-100', 'text-gray-600');
+                    });
+                    updateFilterIndicator();
+                    renderApps();
+                });
+            });
+
+            document.getElementById('clear-filter').addEventListener('click', () => {
+                currentFilter = 'all';
+                searchQuery = '';
+                document.getElementById('search').value = '';
+                document.querySelectorAll('.filter-btn').forEach(b => {
+                    b.classList.remove('bg-purple-600', 'text-white');
+                    b.classList.add('bg-gray-100', 'text-gray-600');
+                });
+                document.querySelector('.filter-btn[data-filter="all"]').classList.remove('bg-gray-100', 'text-gray-600');
+                document.querySelector('.filter-btn[data-filter="all"]').classList.add('bg-purple-600', 'text-white');
+                updateFilterIndicator();
+                renderApps();
+            });
+
+            document.getElementById('close-modal').addEventListener('click', closeModal);
+            document.getElementById('modal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) closeModal();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeModal();
+            });
+        }
+
+        function updateFilterIndicator() {
+            const indicator = document.getElementById('active-filter');
+            const label = document.getElementById('filter-label');
+            const hasFilter = currentFilter !== 'all' || searchQuery;
+
+            if (hasFilter) {
+                indicator.classList.remove('hidden');
+                indicator.classList.add('flex');
+                let filterParts = [];
+                if (currentFilter !== 'all') filterParts.push(getCostCategoryLabel(currentFilter));
+                if (searchQuery) filterParts.push(`"${searchQuery}"`);
+                label.textContent = filterParts.join(' + ');
+            } else {
+                indicator.classList.add('hidden');
+                indicator.classList.remove('flex');
+            }
+        }
+
+        // Initialize on page load
+        initSupabase();
+    </script>
+</body>
+</html>

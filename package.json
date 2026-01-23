@@ -1,0 +1,19 @@
+{
+  "name": "app-issue-tracker",
+  "version": "1.0.0",
+  "description": "App integration issue tracker dashboard with API pricing analysis",
+  "main": "index.html",
+  "scripts": {
+    "migrate": "node data/migrate.js"
+  },
+  "keywords": [
+    "dashboard",
+    "issue-tracker",
+    "api-pricing"
+  ],
+  "author": "Composio",
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}
