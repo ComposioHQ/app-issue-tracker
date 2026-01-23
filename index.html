@@ -348,7 +348,8 @@
                         partnerships_issues: app.partnerships_issues || [],
                         qa_total_actions: app.qa_total_actions || 0,
                         partnerships_total_actions: app.partnerships_total_actions || 0,
-                        total_cost_to_unblock: app.total_cost_to_unblock
+                        total_cost_to_unblock: app.total_cost_to_unblock,
+                        linear_ticket_url: app.linear_ticket_url
                     };
                 });
 
@@ -627,13 +628,13 @@
             document.getElementById('solved-count').textContent = count;
         }
 
-        function toggleSolvedFromModal(appName) {
-            toggleAllIssuesSolved(appName);
+        async function toggleSolvedFromModal(appName) {
+            await toggleAllIssuesSolved(appName);
             openModal(appName);
         }
 
-        function toggleSingleIssueSolved(appName, issueKey) {
-            toggleIssueSolved(appName, issueKey);
+        async function toggleSingleIssueSolved(appName, issueKey) {
+            await toggleIssueSolved(appName, issueKey);
             openModal(appName);
         }
 
