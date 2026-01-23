@@ -296,7 +296,7 @@
             console.log('Supabase library loaded, createClient:', typeof window.supabase.createClient);
         }
 
-        let supabase = null;
+        let supabaseClient = null;
         let appData = {};
         let currentFilter = 'all';
         let currentTeam = 'all';
@@ -325,12 +325,12 @@
                 // Initialize Supabase client
                 console.log('Step 4: Creating Supabase client');
                 console.log('window.supabase:', typeof window.supabase);
-                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
                 console.log('Step 5: Supabase client created');
 
                 // Fetch apps data
                 console.log('Step 6: Fetching apps...');
-                const { data: apps, error: appsError } = await supabase
+                const { data: apps, error: appsError } = await supabaseClient
                     .from('apps')
                     .select('*');
                 console.log('Step 7: Apps fetched', apps?.length, 'apps, error:', appsError);
@@ -354,7 +354,7 @@
 
                 // Fetch solved issues
                 console.log('Step 8: Fetching solved issues...');
-                const { data: solved, error: solvedError } = await supabase
+                const { data: solved, error: solvedError } = await supabaseClient
                     .from('solved_issues')
                     .select('*');
                 console.log('Step 9: Solved issues fetched', solved?.length, 'items, error:', solvedError);
@@ -418,7 +418,7 @@
             try {
                 if (isSolved) {
                     // Remove from Supabase
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('solved_issues')
                         .delete()
                         .eq('app_name', appName)
@@ -429,7 +429,7 @@
                     delete solvedState[appName].issues[issueKey];
                 } else {
                     // Add to Supabase
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('solved_issues')
                         .upsert({
                             app_name: appName,
@@ -516,7 +516,7 @@
                     }
 
                     for (const key of keysToDelete) {
-                        await supabase
+                        await supabaseClient
                             .from('solved_issues')
                             .delete()
                             .eq('app_name', appName)
@@ -552,7 +552,7 @@
                     }
 
                     if (itemsToUpsert.length > 0) {
-                        const { error } = await supabase
+                        const { error } = await supabaseClient
                             .from('solved_issues')
                             .upsert(itemsToUpsert);
                         if (error) throw error;
