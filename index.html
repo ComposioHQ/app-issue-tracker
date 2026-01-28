@@ -1228,7 +1228,7 @@
                 indicator.classList.add('flex');
                 let filterParts = [];
                 if (currentFilter !== 'all') filterParts.push(getCostCategoryLabel(currentFilter));
-                if (searchQuery) filterParts.push(`"${searchQuery)}"`);
+                if (searchQuery) filterParts.push(`"${searchQuery}"`);
                 label.textContent = filterParts.join(' + ');
             } else {
                 indicator.classList.add('hidden');
