@@ -648,23 +648,28 @@
         }
 
         function updateTabCounts() {
-            let allCount = 0, qaCount = 0, partnershipsCount = 0;
+            let allCount = 0;
+            let qaOpen = 0, qaTotal = 0;
+            let partnershipsOpen = 0, partnershipsTotal = 0;
+
             Object.values(appData).forEach(app => {
                 allCount++;
-                // Count apps with unsolved QA issues
+                // Count QA apps - open vs total
                 if (app.teams?.includes('QA') && app.qa_issues?.length > 0) {
+                    qaTotal++;
                     const hasUnsolvedQA = app.qa_issues.some(issue => !isIssueSolved(app.app_name, issue, 'QA'));
-                    if (hasUnsolvedQA) qaCount++;
+                    if (hasUnsolvedQA) qaOpen++;
                 }
-                // Count apps with unsolved Partnerships issues
+                // Count Partnerships apps - open vs total
                 if (app.teams?.includes('Partnerships') && app.partnerships_issues?.length > 0) {
+                    partnershipsTotal++;
                     const hasUnsolvedPartnerships = app.partnerships_issues.some(issue => !isIssueSolved(app.app_name, issue, 'Partnerships'));
-                    if (hasUnsolvedPartnerships) partnershipsCount++;
+                    if (hasUnsolvedPartnerships) partnershipsOpen++;
                 }
             });
             document.getElementById('tab-count-all').textContent = `(${allCount})`;
-            document.getElementById('tab-count-qa').textContent = `(${qaCount})`;
-            document.getElementById('tab-count-partnerships').textContent = `(${partnershipsCount})`;
+            document.getElementById('tab-count-qa').textContent = `(${qaOpen}/${qaTotal})`;
+            document.getElementById('tab-count-partnerships').textContent = `(${partnershipsOpen}/${partnershipsTotal})`;
         }
 
         function updateHeader() {
@@ -1223,7 +1228,7 @@
                 indicator.classList.add('flex');
                 let filterParts = [];
                 if (currentFilter !== 'all') filterParts.push(getCostCategoryLabel(currentFilter));
-                if (searchQuery) filterParts.push(`"${searchQuery}"`);
+                if (searchQuery) filterParts.push(`"${searchQuery)}"`);
                 label.textContent = filterParts.join(' + ');
             } else {
                 indicator.classList.add('hidden');
